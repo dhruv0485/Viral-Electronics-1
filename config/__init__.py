@@ -1,3 +1,3 @@
-from .firebase import initialize_firebase, get_firestore_client
+from .mongodb import get_contacts_collection
 
-__all__ = ["initialize_firebase", "get_firestore_client"]
+__all__ = ["get_contacts_collection"]

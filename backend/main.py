@@ -45,6 +45,53 @@ async def root():
 async def health_check():
     return {"status": "ok", "message": "API is running smoothly."}
 
+@app.get("/health/detailed")
+async def detailed_health_check():
+    """Detailed health check that tests Firebase connectivity"""
+    health_status = {
+        "status": "ok",
+        "timestamp": "2024-01-01T00:00:00Z",
+        "services": {}
+    }
+    
+    try:
+        # Test Firebase connectivity
+        from config.firebase import get_firestore_client
+        db = get_firestore_client()
+        # Try to access a collection to test connectivity
+        db.collection('test').limit(1).get()
+        health_status["services"]["firebase"] = {
+            "status": "healthy",
+            "message": "Firebase connection successful"
+        }
+    except Exception as e:
+        health_status["services"]["firebase"] = {
+            "status": "unhealthy",
+            "message": f"Firebase connection failed: {str(e)}"
+        }
+        health_status["status"] = "degraded"
+    
+    # Check environment variables
+    env_vars = {
+        "FIREBASE_PROJECT_ID": os.getenv("FIREBASE_PROJECT_ID"),
+        "MAIL_USERNAME": os.getenv("MAIL_USERNAME"),
+        "MAIL_PASSWORD": "***" if os.getenv("MAIL_PASSWORD") else None,
+        "MAIL_FROM": os.getenv("MAIL_FROM"),
+        "NOTIFICATION_EMAIL": os.getenv("NOTIFICATION_EMAIL")
+    }
+    
+    health_status["environment"] = {
+        "firebase_configured": bool(os.getenv("FIREBASE_PROJECT_ID")),
+        "email_configured": all([
+            os.getenv("MAIL_USERNAME"),
+            os.getenv("MAIL_PASSWORD"),
+            os.getenv("MAIL_FROM"),
+            os.getenv("NOTIFICATION_EMAIL")
+        ])
+    }
+    
+    return health_status
+
 @app.post("/test-contact")
 async def test_contact():
     """Test endpoint to verify the contact form can receive data"""

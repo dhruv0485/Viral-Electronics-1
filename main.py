@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes.contact import router as contact_router
-from config.firebase import initialize_firebase
+from backend.routes.contact import router as contact_router
+from backend.config.mongodb import get_database, close_mongo_connection
 import logging
 import os
 
@@ -28,12 +28,21 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     try:
-        initialize_firebase()
-        logger.info("Firebase initialized successfully on startup.")
+        # Test MongoDB connection
+        db = await get_database()
+        logger.info("MongoDB connected successfully on startup.")
         logger.info(f"CORS allowed origins: {ALLOWED_ORIGINS}")
     except Exception as e:
         logger.error(f"Error during startup: {e}")
         raise 
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    try:
+        await close_mongo_connection()
+        logger.info("MongoDB connection closed successfully.")
+    except Exception as e:
+        logger.error(f"Error during shutdown: {e}")
 
 app.include_router(contact_router)
 
@@ -44,6 +53,53 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "message": "API is running smoothly."}
+
+@app.get("/health/detailed")
+async def detailed_health_check():
+    """Detailed health check that tests MongoDB connectivity"""
+    health_status = {
+        "status": "ok",
+        "timestamp": "2024-01-01T00:00:00Z",
+        "services": {}
+    }
+    
+    try:
+        # Test MongoDB connectivity
+        db = await get_database()
+        # Try to access a collection to test connectivity
+        await db.list_collection_names()
+        health_status["services"]["mongodb"] = {
+            "status": "healthy",
+            "message": "MongoDB connection successful"
+        }
+    except Exception as e:
+        health_status["services"]["mongodb"] = {
+            "status": "unhealthy",
+            "message": f"MongoDB connection failed: {str(e)}"
+        }
+        health_status["status"] = "degraded"
+    
+    # Check environment variables
+    env_vars = {
+        "MONGODB_URL": os.getenv("MONGODB_URL"),
+        "DATABASE_NAME": os.getenv("DATABASE_NAME"),
+        "MAIL_USERNAME": os.getenv("MAIL_USERNAME"),
+        "MAIL_PASSWORD": "***" if os.getenv("MAIL_PASSWORD") else None,
+        "MAIL_FROM": os.getenv("MAIL_FROM"),
+        "NOTIFICATION_EMAIL": os.getenv("NOTIFICATION_EMAIL")
+    }
+    
+    health_status["environment"] = {
+        "mongodb_configured": bool(os.getenv("MONGODB_URL")),
+        "email_configured": all([
+            os.getenv("MAIL_USERNAME"),
+            os.getenv("MAIL_PASSWORD"),
+            os.getenv("MAIL_FROM"),
+            os.getenv("NOTIFICATION_EMAIL")
+        ])
+    }
+    
+    return health_status
 
 @app.post("/test-contact")
 async def test_contact():

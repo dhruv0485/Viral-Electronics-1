@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, validator
+from pydantic import BaseModel, EmailStr, field_validator
 import re
 from typing import Optional
 from datetime import datetime
@@ -9,25 +9,29 @@ class ContactForm(BaseModel):
     email: EmailStr
     message: str
 
-    @validator('name')
+    @field_validator('name')
+    @classmethod
     def validate_name(cls, v):
         if not v or len(v.strip()) < 2:
             raise ValueError("Name must be at least 2 characters long.")
         return v.strip()
     
-    @validator('phone')
+    @field_validator('phone')
+    @classmethod
     def validate_phone(cls, v):
         if not v.isdigit():
             raise ValueError("Phone number must contain only digits.")
         return v
     
-    @validator('email')
+    @field_validator('email')
+    @classmethod
     def validate_email(cls, v):
         if not v or '@' not in v:
             raise ValueError("Invalid email address.")
         return v.lower().strip()
     
-    @validator('message')
+    @field_validator('message')
+    @classmethod
     def validate_message(cls, v):
         if not v or len(v.strip()) < 10:
             raise ValueError("Message must be at least 10 characters long.")
@@ -40,11 +44,11 @@ class ContactResponse(BaseModel):
     timestamp: Optional[str] = None
 
 class ContactData(BaseModel):
-    id:str
-    name:str
-    phone:str
-    email:str
-    message:str
+    id: str
+    name: str
+    phone: str
+    email: str
+    message: str
     timestamp: datetime
     status: str
     source: str

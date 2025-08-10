@@ -8,8 +8,8 @@ import os
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Get environment variable for allowed origins
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",")
+# Get environment variable for allowed origins - allow any localhost port
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000,http://localhost:4173,http://localhost:8080,http://127.0.0.1:5173,http://127.0.0.1:3000,http://127.0.0.1:4173,http://127.0.0.1:8080").split(",")
 
 app = FastAPI(
     title="Viral Electronics API",
@@ -30,6 +30,7 @@ async def startup_event():
     try:
         initialize_firebase()
         logger.info("Firebase initialized successfully on startup.")
+        logger.info(f"CORS allowed origins: {ALLOWED_ORIGINS}")
     except Exception as e:
         logger.error(f"Error during startup: {e}")
         raise 
@@ -43,6 +44,11 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "message": "API is running smoothly."}
+
+@app.post("/test-contact")
+async def test_contact():
+    """Test endpoint to verify the contact form can receive data"""
+    return {"message": "Test endpoint working", "status": "success"}
 
 if __name__ == "__main__":
     import uvicorn

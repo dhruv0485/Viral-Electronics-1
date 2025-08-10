@@ -11,16 +11,19 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/contact", tags=["contact"])
 
 @router.post("/", response_model=ContactResponse, status_code = status.HTTP_201_CREATED)
-
 async def save_contact_form(contact_data: ContactForm):
+    logger.info(f"Received contact form submission: {contact_data.dict()}")
+    
     try:
         db = get_firestore_client()
+        logger.info("Firestore client obtained successfully")
 
         contact_dict = contact_data.dict()
         contact_dict['timestamp'] = datetime.now()
         contact_dict['status'] = 'new'
         contact_dict['source'] = 'website'
 
+        logger.info(f"Attempting to save contact data: {contact_dict}")
         doc_ref = db.collection('contacts').add(contact_dict)
         doc_id = doc_ref[1].id
         logger.info(f"Contact form saved with ID: {doc_id}")
